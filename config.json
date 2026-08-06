@@ -1,0 +1,10 @@
+{
+  "network": "192.168.1.0/24",
+  "scan_interval": 60,
+  "ban_real": true,
+  "scan_timeout_ms": 300,
+  "max_concurrent_scans": 100,
+  "ai_learning_mode": true,
+  "anomaly_threshold": 0.6,
+  "rate_limit_ms": 5000
+}

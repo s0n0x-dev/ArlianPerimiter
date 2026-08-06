@@ -1,0 +1,7 @@
+# ARLIAN KAYOLI - Паттерны атак
+port_scan:22,445,3389,5900,1433,3306
+smb_attack:445
+ssh_brute:22
+rdp_attack:3389
+mass_scan:>5_ports
+night_activity:20-24

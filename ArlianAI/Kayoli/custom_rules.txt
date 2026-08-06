@@ -1,0 +1,5 @@
+# ARLIAN KAYOLI - Пользовательские правила
+rule:port_445_risk=+30
+rule:night_hour_risk=+15
+rule:mass_scan_threshold=10
+rule:mass_scan_risk=+25

@@ -1,0 +1,25 @@
+#!/bin/bash
+# =============================================
+# ARLIAN DEPLOYMENT SCRIPT (deps)
+# Использование: ./deps worktime
+# =============================================
+
+case "$1" in
+  worktime)
+    echo "🕒 Запуск в рабочем режиме (9:00–21:00)"
+    while true; do
+      HOUR=$(date +%H)
+      if [ $HOUR -ge 9 ] && [ $HOUR -le 21 ]; then
+        echo "🔍 Сканирую и чиню..."
+        python3 ai.py
+      else
+        echo "💤 Ночной режим — пропускаю"
+      fi
+      sleep 3600  # раз в час
+    done
+    ;;
+  *)
+    echo "Использование: ./deps worktime"
+    exit 1
+    ;;
+esac
