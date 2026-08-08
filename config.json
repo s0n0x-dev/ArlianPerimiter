@@ -6,5 +6,18 @@
   "max_concurrent_scans": 100,
   "ai_learning_mode": true,
   "anomaly_threshold": 0.6,
-  "rate_limit_ms": 5000
+  "rate_limit_ms": 5000,
+  "ip_protocol": "both",
+  "enable_ipv6": true,
+  "enable_ipv4": true,
+  "syn_threshold": 100,
+  "ip_threshold": 200,
+  "udp_threshold": 150,
+  "icmp_threshold": 200,
+  "http_threshold": 500,
+  "ssh_threshold": 40,
+  "ddos_min_sources": 10,
+  "ban_duration_secs": 600,
+  "permanent_ban_after": 5,
+  "ipv6_max_hosts": 65536
 }
