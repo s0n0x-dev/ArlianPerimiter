@@ -22,6 +22,11 @@ use tokio::net::TcpStream;
 use tokio::sync::Semaphore;
 use tokio::time::timeout;
 
+mod antiflood;
+mod ddos;
+use crate::antiflood::AntiFlood;
+use crate::ddos::DdosProtector;
+
 // ============================================================
 //  CONSTANTS / КОНСТАНТЫ
 // ============================================================
@@ -407,7 +412,40 @@ struct Config {
     ip_protocol: String,
     enable_ipv6: bool,
     enable_ipv4: bool,
+    // Пороги DDoS / Anti-Flood (настраиваемые)
+    #[serde(default = "default_syn_threshold")]
+    syn_threshold: usize,
+    #[serde(default = "default_ip_threshold")]
+    ip_threshold: usize,
+    #[serde(default = "default_udp_threshold")]
+    udp_threshold: usize,
+    #[serde(default = "default_icmp_threshold")]
+    icmp_threshold: usize,
+    #[serde(default = "default_http_threshold")]
+    http_threshold: usize,
+    #[serde(default = "default_ssh_threshold")]
+    ssh_threshold: usize,
+    #[serde(default = "default_ddos_min_sources")]
+    ddos_min_sources: usize,
+    #[serde(default = "default_ban_duration_secs")]
+    ban_duration_secs: u64,
+    #[serde(default = "default_permanent_ban_after")]
+    permanent_ban_after: u32,
+    // IPv6: максимальное число адресов для сканирования подсети
+    #[serde(default = "default_ipv6_max_hosts")]
+    ipv6_max_hosts: usize,
 }
+
+fn default_syn_threshold() -> usize { 100 }
+fn default_ip_threshold() -> usize { 200 }
+fn default_udp_threshold() -> usize { 150 }
+fn default_icmp_threshold() -> usize { 200 }
+fn default_http_threshold() -> usize { 500 }
+fn default_ssh_threshold() -> usize { 40 }
+fn default_ddos_min_sources() -> usize { 10 }
+fn default_ban_duration_secs() -> u64 { 600 }
+fn default_permanent_ban_after() -> u32 { 5 }
+fn default_ipv6_max_hosts() -> usize { 65536 }
 
 impl Default for Config {
     fn default() -> Self {
@@ -423,6 +461,16 @@ impl Default for Config {
             ip_protocol: "both".to_string(),
             enable_ipv6: true,
             enable_ipv4: true,
+            syn_threshold: 100,
+            ip_threshold: 200,
+            udp_threshold: 150,
+            icmp_threshold: 200,
+            http_threshold: 500,
+            ssh_threshold: 40,
+            ddos_min_sources: 10,
+            ban_duration_secs: 600,
+            permanent_ban_after: 5,
+            ipv6_max_hosts: 65536,
         }
     }
 }
@@ -514,11 +562,6 @@ fn ip_to_u32(ip: &str) -> Option<u32> {
     Some(u32::from_be_bytes([a, b, c, d]))
 }
 
-fn u32_to_ip(num: u32) -> String {
-    let [a, b, c, d] = num.to_be_bytes();
-    format!("{}.{}.{}.{}", a, b, c, d)
-}
-
 fn validate_ip(ip: &str) -> bool {
     if ip.contains(':') {
         return ip.parse::<Ipv6Addr>().is_ok();
@@ -526,7 +569,10 @@ fn validate_ip(ip: &str) -> bool {
     ip.split('.').count() == 4 && ip.split('.').all(|p| p.parse::<u8>().is_ok())
 }
 
-fn parse_cidr(cidr: &str) -> Result<Vec<IpAddrUniversal>, Box<dyn Error + Send + Sync>> {
+fn parse_cidr(
+    cidr: &str,
+    ipv6_max_hosts: usize,
+) -> Result<Vec<IpAddrUniversal>, Box<dyn Error + Send + Sync>> {
     // Пробуем как IPv4
     if let Ok(net) = cidr.parse::<ipnet::Ipv4Net>() {
         let mut ips = Vec::new();
@@ -539,7 +585,10 @@ fn parse_cidr(cidr: &str) -> Result<Vec<IpAddrUniversal>, Box<dyn Error + Send +
     // Пробуем как IPv6
     if let Ok(net) = cidr.parse::<ipnet::Ipv6Net>() {
         let mut ips = Vec::new();
-        for ip in net.hosts() {
+        // Для IPv6 НЕ перебираем все адреса (в /64 их 2^64 — невозможно).
+        // Сканируем только первые N адресов подсети (настраивается в config.json,
+        // поле ipv6_max_hosts). По умолчанию 65536 (первые /48 подсети).
+        for ip in net.hosts().take(ipv6_max_hosts) {
             ips.push(IpAddrUniversal::V6(u128::from(ip)));
         }
         return Ok(ips);
@@ -1685,7 +1734,6 @@ mod console_manager {
         Warn,
         Error,
         Success,
-        Debug,
     }
 
     #[derive(Debug, Clone, Copy, PartialEq)]
@@ -1696,7 +1744,6 @@ mod console_manager {
     }
 
     pub struct ConsoleManager {
-        log_files: Arc<Mutex<Vec<(LogTarget, String)>>>,
         monitor_file: String,
     }
 
@@ -1706,7 +1753,6 @@ mod console_manager {
             fs::create_dir_all("logs/key_system")?;
 
             Ok(ConsoleManager {
-                log_files: Arc::new(Mutex::new(Vec::new())),
                 monitor_file: format!(
                     "logs/monitor/monitor_{}.log",
                     Local::now().format("%Y-%m-%d")
@@ -1732,7 +1778,6 @@ mod console_manager {
                 LogLevel::Warn => "WARN",
                 LogLevel::Error => "ERROR",
                 LogLevel::Success => "SUCCESS",
-                LogLevel::Debug => "DEBUG",
             };
 
             let log_line = format!("[{}] [{}] {}", timestamp, level_str, message);
@@ -1756,7 +1801,6 @@ mod console_manager {
                 LogLevel::Warn => println!("{}", log_line.yellow()),
                 LogLevel::Error => println!("{}", log_line.red()),
                 LogLevel::Success => println!("{}", log_line.green()),
-                LogLevel::Debug => println!("{}", log_line.dimmed()),
             }
         }
 
@@ -1788,6 +1832,8 @@ async fn scan_network(
     metrics: Arc<Metrics>,
     ai: Arc<AIDetector>,
     rate_limiter: Arc<RateLimiter>,
+    antiflood: Arc<AntiFlood>,
+    ddos: Arc<DdosProtector>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     println!(
         "\n{}",
@@ -1800,7 +1846,7 @@ async fn scan_network(
     let start = Instant::now();
     metrics.inc_scans();
 
-    let ips = parse_cidr(&config.network)?;
+    let ips = parse_cidr(&config.network, config.ipv6_max_hosts)?;
     let total_ips = ips.len();
     println!("   Всего IP в сети: {}", total_ips);
 
@@ -1904,6 +1950,14 @@ async fn scan_network(
         let is_whitelisted = wl_ips.contains(&ip_str);
         let is_mac_whitelisted = mac.as_ref().map(|m| wl_macs.contains(m)).unwrap_or(false);
 
+        // РЕГИСТРАЦИЯ В АНТИ-ФЛУД: только для чужих устройств с высоким риском,
+        // и только 1 запись за скан (НЕ по числу портов), чтобы НЕ банить своих
+        if !is_whitelisted && !is_mac_whitelisted && !ports.is_empty() {
+            // Регистрируем только самый опасный порт устройства (если есть)
+            let highest_risk = ports.iter().copied().max().unwrap_or(0);
+            antiflood.register_tcp(&ip_str, highest_risk);
+        }
+
         if is_whitelisted || is_mac_whitelisted {
             println!("{}", format!("   {} — СВОЙ", ip_str).bright_green());
         } else {
@@ -1943,6 +1997,8 @@ async fn scan_network(
     ai.cleanup_old_data();
     ai.update_learning_curve();
     rate_limiter.cleanup();
+    antiflood.periodic_cleanup().await;
+    ddos.periodic_cleanup();
 
     run_ai_python();
 
@@ -1986,6 +2042,7 @@ async fn scan_network(
     }
     ai.print_health_status();
     rate_limiter.print_stats();
+    antiflood.print_status();
     Ok(())
 }
 
@@ -2033,19 +2090,7 @@ fn init_files() -> Result<bool, Box<dyn Error + Send + Sync>> {
     let is_first_run = !Path::new("config.json").exists();
 
     if !Path::new("config.json").exists() {
-        let default_config = Config {
-            network: "192.168.1.0/24".to_string(),
-            scan_interval: 60,
-            ban_real: true,
-            scan_timeout_ms: 300,
-            max_concurrent_scans: 100,
-            ai_learning_mode: true,
-            anomaly_threshold: 0.6,
-            rate_limit_ms: 5000,
-            ip_protocol: "both".to_string(),
-            enable_ipv6: true,
-            enable_ipv4: true,
-        };
+        let default_config = Config::default();
         fs::write(
             "config.json",
             serde_json::to_string_pretty(&default_config)?,
@@ -2162,7 +2207,14 @@ async fn main() {
                     format!("❌ Ошибка системы ключей: {}", e),
                 )
                 .await;
-            let mut ks = key_system::KeySystem::new().unwrap();
+            // Создаём пустую систему ключей без паники (unwrap)
+            let mut ks = match key_system::KeySystem::new() {
+                Ok(ks) => ks,
+                Err(e2) => {
+                    eprintln!("Критическая ошибка системы ключей: {}", e2);
+                    std::process::exit(1);
+                }
+            };
             let _ = ks.generate_key(
                 30,
                 5,
@@ -2264,6 +2316,54 @@ async fn main() {
 
     let rate_limiter = Arc::new(RateLimiter::new(config.rate_limit_ms));
 
+    // Анти-флуд модуль v2.0
+    let mut antiflood = AntiFlood::new(
+        config.ban_real && !config.ai_learning_mode,
+        config.ai_learning_mode,
+    );
+    antiflood.set_thresholds(
+        config.syn_threshold,
+        config.ip_threshold,
+        config.udp_threshold,
+        config.icmp_threshold,
+        config.http_threshold,
+        config.ssh_threshold,
+        config.ddos_min_sources,
+        config.ban_duration_secs,
+        config.permanent_ban_after,
+    );
+    antiflood.set_whitelist(&whitelist.ips);
+    let antiflood = Arc::new(antiflood);
+
+    // DDoS Protection модуль v1.0 (реальный захват пакетов)
+    let mut ddos = DdosProtector::new(
+        config.ban_real && !config.ai_learning_mode,
+        config.ai_learning_mode,
+        antiflood.clone(),
+    );
+    ddos.set_thresholds(
+        config.syn_threshold,
+        config.udp_threshold,
+        config.icmp_threshold,
+        config.http_threshold,
+        config.ssh_threshold,
+        config.ddos_min_sources,
+        config.ban_duration_secs,
+        config.permanent_ban_after,
+    );
+    ddos.set_whitelist(&whitelist.ips);
+    let ddos = Arc::new(ddos);
+    // Запускаем захват пакетов на всех доступных интерфейсах
+    if let Ok(devices) = pcap::Device::list() {
+        for device in devices {
+            if device.flags.is_up() && !device.flags.is_loopback() {
+                if let Err(e) = ddos.start_capture(&device.name) {
+                    eprintln!("{}", format!("[DDoS] Не удалось захватить {}: {}", device.name, e).yellow());
+                }
+            }
+        }
+    }
+
     console
         .log(
             console_manager::LogTarget::Main,
@@ -2317,6 +2417,8 @@ async fn main() {
         let metrics = metrics.clone();
         let ai = ai.clone();
         let rate_limiter = rate_limiter.clone();
+        let antiflood = antiflood.clone();
+        let ddos = ddos.clone();
         async move {
             loop {
                 if let Err(e) = scan_network(
@@ -2326,6 +2428,8 @@ async fn main() {
                     metrics.clone(),
                     ai.clone(),
                     rate_limiter.clone(),
+                    antiflood.clone(),
+                    ddos.clone(),
                 )
                 .await
                 {
@@ -2344,6 +2448,8 @@ async fn main() {
     let key_system_clone = Arc::new(Mutex::new(key_system));
     let ai_cmd = ai.clone();
     let metrics_cmd = metrics.clone();
+    let antiflood_cmd = antiflood.clone();
+    let ddos_cmd = ddos.clone();
 
     let cmd_loop = tokio::spawn(async move {
         loop {
@@ -2351,8 +2457,15 @@ async fn main() {
             std::io::stdout().flush().unwrap();
 
             let mut input = String::new();
-            std::io::stdin().read_line(&mut input).unwrap();
+            let bytes_read = std::io::stdin().read_line(&mut input).unwrap();
+            // EOF (например, stdin закрыт): выходим из цикла, чтобы не крутить горячий цикл
+            if bytes_read == 0 {
+                break;
+            }
             let input = input.trim();
+            if input.is_empty() {
+                continue;
+            }
 
             match input {
                 "help" => {
@@ -2363,6 +2476,10 @@ async fn main() {
                     println!("  genkey <дней>  - Сгенерировать новый ключ");
                     println!("  activate <key> - Активировать ключ");
                     println!("  stats          - Показать статистику сканирования");
+                    println!("  flood          - Показать статус anti-flood");
+                    println!("  ddos           - Показать статус DDoS Protection");
+                    println!("  banned         - Список забаненных IP");
+                    println!("  unban <ip>     - Разбанить IP");
                     println!("  quit/exit      - Выйти из программы");
                     println!("");
                 }
@@ -2370,6 +2487,7 @@ async fn main() {
                     console_clone.show_status().await;
                     ai_cmd.print_health_status();
                     rate_limiter.print_stats();
+                    antiflood_cmd.print_status();
                 }
                 "stats" => {
                     metrics_cmd.print();
@@ -2463,6 +2581,46 @@ async fn main() {
                                     )
                                     .await;
                             }
+                        }
+                    }
+                }
+                "flood" => {
+                    antiflood_cmd.print_status();
+                }
+                "ddos" => {
+                    ddos_cmd.print_status();
+                }
+                "banned" => {
+                    let banned = antiflood_cmd.get_banned_ips();
+                    println!("\n{}", "🚫 ЗАБАНЕННЫЕ IP".bold().bright_yellow());
+                    if banned.is_empty() {
+                        println!("  Нет забаненных IP");
+                    } else {
+                        for ip in &banned {
+                            println!("  {}", ip.bright_red());
+                        }
+                    }
+                    println!("");
+                }
+                cmd if cmd.starts_with("unban") => {
+                    let parts: Vec<&str> = cmd.split_whitespace().collect();
+                    if parts.len() >= 2 {
+                        if antiflood_cmd.unban(parts[1]) {
+                            console_clone
+                                .log(
+                                    console_manager::LogTarget::Main,
+                                    console_manager::LogLevel::Success,
+                                    format!("✅ IP {} разбанен", parts[1]),
+                                )
+                                .await;
+                        } else {
+                            console_clone
+                                .log(
+                                    console_manager::LogTarget::Main,
+                                    console_manager::LogLevel::Warn,
+                                    format!("❓ IP {} не найден в списке банов", parts[1]),
+                                )
+                                .await;
                         }
                     }
                 }
