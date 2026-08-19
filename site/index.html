@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>ArlianPerimeter</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <!-- Intro / Lock Screen -->
+  <section id="intro" class="intro">
+    <div class="intro-bg">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+      <div class="grid-overlay"></div>
+    </div>
+
+    <div class="intro-content">
+      <div class="logo-badge">
+        <span class="logo-icon">◈</span>
+      </div>
+      <h1 class="project-title">
+        <span class="title-main">Arlian</span><span class="title-accent">Perimeter</span>
+      </h1>
+      <p class="build-version">Build <span id="version">8.4.2</span></p>
+      <p class="tagline">Secure • Adaptive • Unbreakable</p>
+
+      <!-- Swipe Curtain -->
+      <div class="swipe-container" id="swipeContainer">
+        <div class="swipe-track" id="swipeTrack">
+          <div class="swipe-progress" id="swipeProgress">
+            <div class="progress-shine"></div>
+          </div>
+          <div class="swipe-particles" id="swipeParticles" aria-hidden="true"></div>
+          <div class="swipe-handle" id="swipeHandle">
+            <div class="handle-ring"></div>
+            <div class="handle-inner">
+              <svg class="arrow-icon" viewBox="0 0 24 24" fill="none">
+                <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </div>
+          <span class="swipe-label" id="swipeLabel">Продолжить</span>
+          <div class="swipe-success" id="swipeSuccess">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+        <p class="swipe-hint" id="swipeHint">свайпните вправо →</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Content -->
+  <section id="main" class="main hidden">
+    <header class="top-bar">
+      <div class="top-bar-left">
+        <span class="mini-logo">◈</span>
+        <span class="mini-title">ArlianPerimeter</span>
+      </div>
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        Online
+      </div>
+    </header>
+
+    <div class="content-wrapper">
+      <div class="section-header">
+        <h2>Системные данные</h2>
+        <p class="section-sub">Актуальная информация о сборке и модулях</p>
+      </div>
+
+      <div class="table-card">
+        <div class="table-glow"></div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Параметр</th>
+              <th>Значение</th>
+              <th>Статус</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Версия ядра</td>
+              <td><code>8.4.2-stable</code></td>
+              <td><span class="badge badge-ok">Активна</span></td>
+            </tr>
+            <tr>
+              <td>Модуль Perimeter</td>
+              <td><code>v3.1.0</code></td>
+              <td><span class="badge badge-ok">Активен</span></td>
+            </tr>
+            <tr>
+              <td>Защитный слой</td>
+              <td><code>Shield-X</code></td>
+              <td><span class="badge badge-ok">Включён</span></td>
+            </tr>
+            <tr>
+              <td>Шифрование</td>
+              <td><code>AES-256-GCM</code></td>
+              <td><span class="badge badge-ok">OK</span></td>
+            </tr>
+            <tr>
+              <td>Время аптайма</td>
+              <td><code>142д 07ч 19м</code></td>
+              <td><span class="badge badge-info">Стабильно</span></td>
+            </tr>
+            <tr>
+              <td>Нагрузка CPU</td>
+              <td><code>12.4%</code></td>
+              <td><span class="badge badge-ok">Норма</span></td>
+            </tr>
+            <tr>
+              <td>Память</td>
+              <td><code>2.1 / 16 GB</code></td>
+              <td><span class="badge badge-ok">Норма</span></td>
+            </tr>
+            <tr>
+              <td>Сетевой трафик</td>
+              <td><code>↑ 1.2 MB/s  ↓ 4.8 MB/s</code></td>
+              <td><span class="badge badge-info">Активен</span></td>
+            </tr>
+            <tr>
+              <td>Последнее обновление</td>
+              <td><code>18.08.2026 14:22</code></td>
+              <td><span class="badge badge-ok">Актуально</span></td>
+            </tr>
+            <tr>
+              <td>Режим работы</td>
+              <td><code>Production</code></td>
+              <td><span class="badge badge-ok">Боевой</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="cards-row">
+        <div class="stat-card">
+          <div class="stat-value">99.97%</div>
+          <div class="stat-label">Uptime</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">0</div>
+          <div class="stat-label">Инциденты</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">24/7</div>
+          <div class="stat-label">Мониторинг</div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <span>ArlianPerimeter © 2026</span>
+      <span class="sep">•</span>
+      <span>Build 8.4.2</span>
+    </footer>
+  </section>
+
+  <script>
+    const handle = document.getElementById('swipeHandle');
+    const progress = document.getElementById('swipeProgress');
+    const label = document.getElementById('swipeLabel');
+    const container = document.getElementById('swipeContainer');
+    const track = document.getElementById('swipeTrack');
+    const particlesEl = document.getElementById('swipeParticles');
+    const successEl = document.getElementById('swipeSuccess');
+    const hint = document.getElementById('swipeHint');
+    const intro = document.getElementById('intro');
+    const main = document.getElementById('main');
+
+    let isDragging = false;
+    let unlocked = false;
+    let startX = 0;
+    let currentX = 0;
+    let maxTravel = 220;
+    const threshold = 0.72;
+
+    function calcMaxTravel() {
+      maxTravel = Math.max(track.offsetWidth - handle.offsetWidth - 12, 120);
+    }
+    calcMaxTravel();
+    window.addEventListener('resize', calcMaxTravel);
+
+    function getClientX(e) {
+      return e.touches ? e.touches[0].clientX : e.clientX;
+    }
+
+    function spawnParticle(x) {
+      const p = document.createElement('span');
+      p.className = 'particle';
+      const size = 3 + Math.random() * 5;
+      p.style.width = size + 'px';
+      p.style.height = size + 'px';
+      p.style.left = (x + 20 + Math.random() * 12) + 'px';
+      p.style.top = (20 + Math.random() * 24) + 'px';
+      p.style.setProperty('--dx', (Math.random() * 30 - 8) + 'px');
+      p.style.setProperty('--dy', (Math.random() * -28 - 6) + 'px');
+      particlesEl.appendChild(p);
+      setTimeout(() => p.remove(), 700);
+    }
+
+    function updateVisual(percent, x) {
+      handle.style.transform = `translateX(${x}px) scale(${1 + percent * 0.06})`;
+      progress.style.width = (percent * 100) + '%';
+      progress.style.opacity = 0.35 + percent * 0.65;
+      handle.style.setProperty('--glow', (0.35 + percent * 0.65).toFixed(2));
+
+      if (percent > 0.08) {
+        label.style.opacity = Math.max(0, 1 - percent * 1.55);
+        label.style.transform = `translateX(${percent * 18}px)`;
+      } else {
+        label.style.opacity = 1;
+        label.style.transform = 'translateX(0)';
+      }
+
+      if (percent >= threshold - 0.12) {
+        track.classList.add('near-unlock');
+      } else {
+        track.classList.remove('near-unlock');
+      }
+
+      if (isDragging && percent > 0.12 && Math.random() > 0.55) {
+        spawnParticle(x);
+      }
+    }
+
+    function onStart(e) {
+      if (unlocked) return;
+      isDragging = true;
+      startX = getClientX(e);
+      handle.style.transition = 'none';
+      progress.style.transition = 'none';
+      label.style.transition = 'none';
+      container.classList.add('dragging');
+      handle.classList.add('active');
+      hint.style.opacity = '0';
+    }
+
+    function onMove(e) {
+      if (!isDragging || unlocked) return;
+      e.preventDefault();
+      currentX = Math.max(0, Math.min(getClientX(e) - startX, maxTravel));
+      updateVisual(currentX / maxTravel, currentX);
+    }
+
+    function unlock() {
+      unlocked = true;
+      container.classList.remove('dragging');
+      handle.classList.remove('active');
+      track.classList.remove('near-unlock');
+      track.classList.add('unlocked');
+
+      handle.style.transition = 'transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease';
+      progress.style.transition = 'width 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease';
+      handle.style.transform = `translateX(${maxTravel}px) scale(1.08)`;
+      progress.style.width = '100%';
+      progress.style.opacity = '1';
+      label.style.opacity = '0';
+
+      setTimeout(() => {
+        handle.style.opacity = '0';
+        successEl.classList.add('show');
+        for (let i = 0; i < 14; i++) {
+          setTimeout(() => spawnParticle(maxTravel * 0.55 + Math.random() * 40), i * 28);
+        }
+      }, 180);
+
+      setTimeout(() => {
+        intro.classList.add('fade-out');
+        setTimeout(() => {
+          intro.style.display = 'none';
+          main.classList.remove('hidden');
+          main.classList.add('fade-in');
+        }, 520);
+      }, 480);
+    }
+
+    function snapBack() {
+      handle.style.transition = 'transform 0.45s cubic-bezier(0.34, 1.4, 0.64, 1)';
+      progress.style.transition = 'width 0.4s cubic-bezier(0.34, 1.2, 0.64, 1), opacity 0.35s ease';
+      label.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+      handle.style.transform = 'translateX(0) scale(1)';
+      progress.style.width = '0%';
+      progress.style.opacity = '0.35';
+      label.style.opacity = '1';
+      label.style.transform = 'translateX(0)';
+      handle.style.setProperty('--glow', '0.35');
+      track.classList.remove('near-unlock');
+      handle.classList.remove('active');
+      container.classList.remove('dragging');
+      hint.style.opacity = '';
+      currentX = 0;
+    }
+
+    function onEnd() {
+      if (!isDragging || unlocked) return;
+      isDragging = false;
+      if (currentX / maxTravel >= threshold) unlock();
+      else snapBack();
+    }
+
+    handle.addEventListener('mousedown', onStart);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onEnd);
+    handle.addEventListener('touchstart', onStart, { passive: false });
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onEnd);
+    document.addEventListener('selectstart', (e) => {
+      if (isDragging) e.preventDefault();
+    });
+  </script>
+</body>
+</html>
